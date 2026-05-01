@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IB CS HL: Option A Databases Master App</title>
+    <style>
+        :root {
+            --primary: #0ea5e9;
+            --primary-dark: #0284c7;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #0f172a;
+            --success: #22c55e;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --ai-color: #8b5cf6;
+            --ai-dark: #6d28d9;
+            --hl-tag: #8b5cf6;
+            --sl-tag: #f59e0b;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { margin-bottom: 5px; text-align: center; color: var(--primary-dark); }
+        p.subtitle { color: #64748b; margin-bottom: 20px; text-align: center; }
+        
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: #e2e8f0;
+            padding: 6px;
+            border-radius: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .tab-btn {
+            padding: 10px 20px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #475569;
+            transition: all 0.2s ease;
+        }
+        .tab-btn.active { background: var(--card-bg); color: var(--primary-dark); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .tab-btn.review-tab { color: var(--error); }
+        .tab-btn.review-tab.active { color: var(--error); }
+        .tab-btn.ai-tab { color: var(--ai-dark); }
+        .tab-btn.ai-tab.active { color: var(--ai-dark); }
+        
+        /* Containers */
+        .tab-content {
+            display: none;
+            width: 100%;
+            max-width: 700px;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+        }
+        .tab-content.active { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Flashcards */
+        .flashcard-container { perspective: 1000px; margin: 20px 0; }
+        .flashcard { width: 100%; height: 300px; position: relative; transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1); transform-style: preserve-3d; cursor: pointer; }
+        .flashcard.is-flipped { transform: rotateY(180deg); }
+        .card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px; box-sizing: border-box; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .card-front { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; font-size: 1.8rem; font-weight: 700; }
+        .card-back { background: white; transform: rotateY(180deg); border: 3px solid var(--primary); font-size: 1.2rem; }
+        
+        .tag { font-size: 0.75rem; font-weight: bold; padding: 4px 10px; border-radius: 20px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .tag.hl { background: var(--hl-tag); color: white; }
+        .tag.sl { background: var(--sl-tag); color: white; }
+
+        /* Active Recall Buttons */
+        .confidence-btns { display: none; justify-content: center; gap: 15px; margin-top: 20px; }
+        .confidence-btns.show { display: flex; }
+        .btn-hard { background: #fee2e2; color: var(--error); border: 2px solid var(--error); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-easy { background: #dcfce3; color: var(--success); border: 2px solid var(--success); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .card-front.hard-flag { border: 4px solid var(--error); }
+
+        /* Input Areas */
+        .input-group { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+        input[type="text"], input[type="password"] { padding: 15px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem; transition: border-color 0.2s; width: 100%; box-sizing: border-box;}
+        textarea { padding: 15px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem; font-family: inherit; resize: vertical; min-height: 120px; transition: border-color 0.2s; width: 100%; box-sizing: border-box;}
+        input:focus, textarea:focus { outline: none; border-color: var(--primary); }
+        
+        .action-btn { padding: 12px; border: none; border-radius: 8px; cursor: pointer; background: var(--primary); color: white; font-weight: bold; font-size: 1rem; transition: background 0.2s; }
+        .action-btn:hover { background: var(--primary-dark); }
+        .action-btn.ai-btn { background: var(--ai-color); }
+        .action-btn.ai-btn:hover { background: var(--ai-dark); }
+        .action-btn:disabled { background: #cbd5e1; cursor: not-allowed; }
+        
+        .feedback-text { font-weight: bold; margin-top: 15px; font-size: 1.1rem; }
+        .correct { color: var(--success); }
+        .incorrect { color: var(--error); }
+
+        /* Blur Sheet */
+        .blur-list { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; max-height: 500px; overflow-y: auto; padding-right: 10px; }
+        .blur-item { background: #f1f5f9; padding: 15px; border-radius: 8px; border-left: 4px solid var(--primary); display: flex; flex-direction: column; gap: 5px; cursor: pointer; }
+        .blur-item strong { font-size: 1.1rem; color: var(--primary-dark); }
+        .blurred-text { filter: blur(6px); transition: filter 0.3s ease; user-select: none; }
+        .blur-item:hover .blurred-text, .blur-item.revealed .blurred-text { filter: blur(0); user-select: auto; }
+        
+        /* AI Panel Specifics */
+        .ai-panel { background: #f5f3ff; border: 1px solid #ddd6fe; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .ai-badge { display: inline-block; background: var(--ai-color); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; margin-bottom: 10px; }
+        .ai-loader { display: none; margin-top: 10px; color: var(--ai-color); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h1>IB CS HL Databases</h1>
+    <p class="subtitle">Complete A.1 - A.4 Syllabus Engine</p>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('flashcards')">📇 Flashcards</button>
+        <button class="tab-btn" onclick="switchTab('learn')">✍️ Type Quiz</button>
+        <button class="tab-btn" onclick="switchTab('blursheet')">🔍 Blur Sheet</button>
+        <button class="tab-btn review-tab" onclick="switchTab('review')">🎯 Review (<span id="review-count">0</span>)</button>
+        <button class="tab-btn ai-tab" onclick="switchTab('ai-examiner')">🤖 AI Examiner</button>
+    </div>
+
+    <div id="flashcards" class="tab-content active">
+        <h2>Active Recall Flashcards</h2>
+        <div class="flashcard-container">
+            <div class="flashcard" id="flashcard" onclick="flipCard()">
+                <div class="card-face card-front" id="front-face">
+                    <span id="front-tag" class="tag"></span>
+                    <div id="card-term">Loading...</div>
+                </div>
+                <div class="card-face card-back" id="card-def">Loading...</div>
+            </div>
+        </div>
+        <div class="confidence-btns" id="confidence-controls">
+            <button class="btn-hard" onclick="markConfidence('hard')">Needs Work</button>
+            <button class="btn-easy" onclick="markConfidence('easy')">Got It</button>
+        </div>
+        <p id="card-counter" style="text-align: center; margin-top: 15px; font-weight: bold; color: #64748b;"></p>
+    </div>
+
+    <div id="learn" class="tab-content">
+        <h2>Smart Type Testing</h2>
+        <div style="background:#f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <span id="learn-tag" class="tag" style="margin-bottom: 10px; display: inline-block;"></span>
+            <strong>Definition:</strong>
+            <p id="learn-def" style="font-size: 1.1rem; margin-top: 5px; margin-bottom: 0;"></p>
+        </div>
+        <div class="input-group">
+            <input type="text" id="learn-input" placeholder="Type the terminology here..." onkeypress="handleEnter(event, 'learn')">
+            <button class="action-btn" onclick="checkLearnAnswer()">Submit Answer</button>
+        </div>
+        <div id="learn-feedback" class="feedback-text"></div>
+        <p id="learn-hint" style="color: #64748b; font-style: italic; font-size: 0.9rem;"></p>
+        <button class="action-btn" onclick="nextLearn()" style="width: 100%; margin-top: 15px;">Next Question</button>
+    </div>
+
+    <div id="blursheet" class="tab-content">
+        <h2>Active Recall Sheet</h2>
+        <div class="blur-list" id="blur-container"></div>
+    </div>
+
+    <div id="review" class="tab-content">
+        <h2 style="color: var(--error);">Targeted Weak Areas</h2>
+        <div id="review-empty" style="text-align: center; padding: 40px 20px; color: #64748b;">
+            <span style="font-size: 3rem;">🎉</span><br>
+            You have no weak areas currently logged!
+        </div>
+        <div id="review-active" style="display: none;">
+            <div style="background:#fee2e2; padding: 20px; border-radius: 8px; border: 1px solid #fca5a5;">
+                <strong>Definition:</strong>
+                <p id="review-def" style="font-size: 1.1rem; margin-top: 5px; margin-bottom: 0;"></p>
+            </div>
+            <div class="input-group">
+                <input type="text" id="review-input" placeholder="Type the term to clear it..." onkeypress="handleEnter(event, 'review')">
+                <button class="action-btn" style="background: var(--error);" onclick="checkReviewAnswer()">Submit Answer</button>
+            </div>
+            <div id="review-feedback" class="feedback-text"></div>
+            <p id="review-hint" style="color: #64748b; font-style: italic; font-size: 0.9rem;"></p>
+            <button class="action-btn" onclick="nextReview()" style="width: 100%; margin-top: 15px; background: #64748b;">Next Weak Area</button>
+        </div>
+    </div>
+
+    <div id="ai-examiner" class="tab-content">
+        <h2 style="color: var(--ai-dark);">🤖 IB AI Examiner</h2>
+        
+        <div id="api-setup-panel" class="ai-panel">
+            <h3>Setup Required</h3>
+            <p style="font-size: 0.95rem;">To generate and mark questions, this app needs a connection to Google's Gemini AI. <strong>It's free!</strong></p>
+            <ol style="font-size: 0.9rem; margin-bottom: 15px;">
+                <li>Go to <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: var(--ai-color);">Google AI Studio</a> and sign in.</li>
+                <li>Click "Create API Key".</li>
+                <li>Paste it below. It is saved <i>locally</i> in your browser, nowhere else.</li>
+            </ol>
+            <div class="input-group">
+                <input type="password" id="api-key-input" placeholder="Paste Gemini API Key here...">
+                <button class="action-btn ai-btn" onclick="saveApiKey()">Save Key & Start</button>
+            </div>
+        </div>
+
+        <div id="ai-interaction-panel" style="display:none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <p style="margin:0; font-size: 0.9rem; color: #64748b;">Connected to Gemini AI.</p>
+                <button onclick="clearApiKey()" style="background:none; border:none; color:var(--error); text-decoration:underline; cursor:pointer; font-size:0.8rem;">Change Key</button>
+            </div>
+
+            <div class="ai-panel" id="ai-question-box" style="display:none;">
+                <span class="ai-badge">IB Style Question</span>
+                <p id="ai-generated-question" style="font-size: 1.1rem; font-weight: bold; margin-bottom: 5px;"></p>
+                <p id="ai-question-context" style="font-size: 0.85rem; color: #6d28d9; margin-top: 0; font-style: italic;"></p>
+            </div>
+
+            <div class="input-group">
+                <textarea id="ai-user-answer" placeholder="Type your full IB-style answer here..." disabled></textarea>
+                <button class="action-btn ai-btn" id="ai-main-btn" onclick="generateAIQuestion()">Generate a Question</button>
+            </div>
+
+            <div class="ai-loader" id="ai-loader">🤖 Examiner is thinking...</div>
+
+            <div id="ai-feedback-box" class="ai-panel" style="display:none; margin-top: 20px; background: #f0fdf4; border-color: #bbf7d0;">
+                <span class="ai-badge" style="background: var(--success);">Examiner Feedback</span>
+                <div id="ai-feedback-content" style="line-height: 1.5; margin-top: 10px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Shared Data Structure ---
+        const rawData = [
+            { term: "Data", def: "Raw facts with no meaning by itself.", keywords: ["raw", "facts"], hl: false },
+            { term: "Information", def: "Data processed into a useful form.", keywords: ["processed", "useful"], hl: false },
+            { term: "Information System", def: "Includes people, procedures, hardware, software, and data.", keywords: ["people", "procedures", "hardware", "software"], hl: false },
+            { term: "Database Transaction", def: "A single logical unit of work that must complete fully or not happen at all.", keywords: ["single", "logical", "unit", "complete"], hl: false },
+            { term: "Roll Back", def: "Undoing partial changes if a transaction fails to protect consistency.", keywords: ["undoing", "partial", "fails"], hl: false },
+            { term: "Concurrency", def: "Several users or processes accessing the same data at the same time.", keywords: ["several", "users", "same", "time"], hl: false },
+            { term: "ACID Properties", def: "Atomicity, Consistency, Isolation, Durability.", keywords: ["atomicity", "consistency", "isolation", "durability"], hl: false },
+            { term: "Query Function", def: "Retrieves information from the database.", keywords: ["retrieves", "information"], hl: false },
+            { term: "Update Function", def: "Inserts, edits, or deletes stored data.", keywords: ["inserts", "edits", "deletes"], hl: false },
+            { term: "Validation", def: "Checks whether data is reasonable and in the right format.", keywords: ["reasonable", "format"], hl: false },
+            { term: "Verification", def: "Checks whether data was entered correctly (e.g., visual check, double entry).", keywords: ["entered", "correctly"], hl: false },
+            { term: "DBMS", def: "Software used to create, store, update, and retrieve data.", keywords: ["software", "create", "retrieve"], hl: false },
+            { term: "RDBMS", def: "A DBMS based on related tables with keys and joins.", keywords: ["related", "tables", "keys", "joins"], hl: false },
+            { term: "Schema", def: "The overall design of the database: entities, fields, relationships, and constraints.", keywords: ["overall", "design", "entities"], hl: false },
+            { term: "Conceptual Schema", def: "The big-picture structure of the whole database and major entities.", keywords: ["big-picture", "major", "entities"], hl: false },
+            { term: "Logical Schema", def: "The tables, relationships, keys, and constraints used by the DBMS.", keywords: ["tables", "relationships", "keys"], hl: false },
+            { term: "Physical Schema", def: "How the data is actually stored on hardware and storage media.", keywords: ["stored", "hardware", "media"], hl: false },
+            { term: "Data Dictionary", def: "Stores metadata: field names, data types, lengths, validation rules.", keywords: ["metadata", "types", "rules"], hl: false },
+            { term: "DDL", def: "Data Definition Language; used to define and change structures like tables and keys.", keywords: ["definition", "language", "structures"], hl: false },
+            { term: "Primary Key", def: "Uniquely identifies each record in a table.", keywords: ["uniquely", "identifies"], hl: false },
+            { term: "Foreign Key", def: "Links one table to another; a primary key appearing in another table.", keywords: ["links", "table", "another"], hl: false },
+            { term: "Candidate Key", def: "Any field that could act as a primary key.", keywords: ["could", "act", "primary"], hl: false },
+            { term: "Composite Key", def: "A primary key formed from more than one field.", keywords: ["formed", "more", "one", "field"], hl: false },
+            { term: "Referential Integrity", def: "Ensures foreign keys refer to valid existing primary keys.", keywords: ["foreign", "valid", "existing"], hl: false },
+            { term: "1NF", def: "No repeating groups and each field holds a single atomic value.", keywords: ["repeating", "single", "atomic"], hl: false },
+            { term: "2NF", def: "In 1NF, and every non-key field is fully dependent on the whole primary key.", keywords: ["fully", "dependent", "whole"], hl: false },
+            { term: "3NF", def: "In 2NF, and non-key fields do not depend on other non-key fields (no transitive dependencies).", keywords: ["depend", "other", "non-key"], hl: false },
+            { term: "Simple Query", def: "Selects data using straightforward criteria from one table.", keywords: ["straightforward", "criteria", "one"], hl: false },
+            { term: "Complex Query", def: "Uses Boolean operators, parameter input, calculated fields, or multiple conditions.", keywords: ["boolean", "multiple", "conditions"], hl: false },
+            { term: "Database Administrator", def: "Manages users, permissions, security settings, backups, and performance.", keywords: ["manages", "users", "security", "backups"], hl: false },
+            { term: "Data Matching", def: "Compares records from different datasets to find the same person or item.", keywords: ["compares", "different", "datasets", "same"], hl: false },
+            { term: "Data Mining", def: "Searches large datasets to discover patterns, trends, or relationships.", keywords: ["searches", "large", "patterns", "trends"], hl: false },
+            { term: "Object-oriented Database", def: "Stores data as objects with attributes and methods; suits complex objects.", keywords: ["objects", "attributes", "methods"], hl: true },
+            { term: "Spatial Database", def: "Handles location-based and geometric data (e.g., GIS).", keywords: ["location-based", "geometric", "gis"], hl: true },
+            { term: "Data Warehouse", def: "A subject-oriented, integrated, time-variant, and non-volatile collection of data for decision-making.", keywords: ["subject-oriented", "integrated", "time-variant", "non-volatile"], hl: true },
+            { term: "ETL", def: "Extract, Transform, Load - collecting, cleaning, and placing data into a warehouse.", keywords: ["extract", "transform", "load"], hl: true },
+            { term: "Cluster Analysis", def: "Groups similar records together without needing pre-labelled categories.", keywords: ["groups", "similar", "without", "labels"], hl: true },
+            { term: "Associations", def: "Finds items or events that appear together (co-occurrence).", keywords: ["appear", "together", "co-occurrence"], hl: true },
+            { term: "Classifications", def: "Places data into known, predefined categories.", keywords: ["predefined", "categories"], hl: true },
+            { term: "Sequential Patterns", def: "Finds events that occur in a useful order (sequence and timing matter).", keywords: ["events", "useful", "order", "timing"], hl: true },
+            { term: "Forecasting", def: "Predicts future values from existing historical trends.", keywords: ["predicts", "future", "historical"], hl: true },
+            { term: "Predictive Modelling", def: "Uses known data to estimate future outcomes, often through classification or decision trees.", keywords: ["estimate", "future", "outcomes"], hl: true },
+            { term: "Segmentation", def: "Partitions records into groups with a shared feature (e.g., dividing customers).", keywords: ["partitions", "groups", "shared"], hl: true },
+            { term: "Link Analysis", def: "Identifies associations between records or entities; uncovers networks.", keywords: ["associations", "entities", "networks"], hl: true },
+            { term: "Deviation Detection", def: "Finds unusual or outlying data that may need investigation.", keywords: ["unusual", "outlying", "investigation"], hl: true }
+        ];
+
+        // --- Core App Variables ---
+        let flashcardQueue = [...rawData.map(item => ({...item, isHard: false}))];
+        let currentCardIndex = 0;
+        let learnData = [...rawData].sort(() => Math.random() - 0.5);
+        let learnIndex = 0;
+        let reviewList = [];
+        let reviewIndex = 0;
+
+        // --- Tabs ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+
+            if (tabId === 'review') initReviewTab();
+            if (tabId === 'ai-examiner') initAITab();
+        }
+
+        // --- AI Examiner Logic ---
+        let currentAIQuestionData = null;
+        let currentAIQuestionText = "";
+
+        function initAITab() {
+            const key = localStorage.getItem('ib_gemini_api_key');
+            if (key) {
+                document.getElementById('api-setup-panel').style.display = 'none';
+                document.getElementById('ai-interaction-panel').style.display = 'block';
+            } else {
+                document.getElementById('api-setup-panel').style.display = 'block';
+                document.getElementById('ai-interaction-panel').style.display = 'none';
+            }
+        }
+
+        function saveApiKey() {
+            const key = document.getElementById('api-key-input').value.trim();
+            if (key) {
+                localStorage.setItem('ib_gemini_api_key', key);
+                initAITab();
+            }
+        }
+
+        function clearApiKey() {
+            localStorage.removeItem('ib_gemini_api_key');
+            initAITab();
+        }
+
+        async function callGemini(promptText) {
+            const key = localStorage.getItem('ib_gemini_api_key');
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+            
+            const response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: promptText }] }]
+                })
+            });
+
+            if (!response.ok) throw new Error("API call failed. Check your API key.");
+            const data = await response.json();
+            return data.candidates[0].content.parts[0].text;
+        }
+
+        async function generateAIQuestion() {
+            // Setup UI for loading
+            const btn = document.getElementById('ai-main-btn');
+            const loader = document.getElementById('ai-loader');
+            const questionBox = document.getElementById('ai-question-box');
+            const answerBox = document.getElementById('ai-user-answer');
+            const feedbackBox = document.getElementById('ai-feedback-box');
+            
+            btn.disabled = true;
+            loader.style.display = 'block';
+            loader.innerText = "🤖 Generating a unique exam question...";
+            questionBox.style.display = 'none';
+            feedbackBox.style.display = 'none';
+            answerBox.value = "";
+            answerBox.disabled = true;
+
+            // Pick a random syllabus point
+            currentAIQuestionData = rawData[Math.floor(Math.random() * rawData.length)];
+            
+            const prompt = `You are a strict IB Computer Science examiner. The student is revising Option A: Databases.
+            Generate ONE realistic short-answer exam question (worth 2 to 4 marks) testing the concept of "${currentAIQuestionData.term}".
+            The syllabus definition for this term is: "${currentAIQuestionData.def}".
+            Use official IB command terms (e.g., Outline, Explain, Describe, Compare, Evaluate).
+            Return ONLY the question text. Do not include the mark scheme or the answer.`;
+
+            try {
+                currentAIQuestionText = await callGemini(prompt);
+                
+                document.getElementById('ai-generated-question').innerText = currentAIQuestionText;
+                document.getElementById('ai-question-context').innerText = `Testing topic: ${currentAIQuestionData.term}`;
+                
+                questionBox.style.display = 'block';
+                answerBox.disabled = false;
+                answerBox.focus();
+                
+                btn.innerText = "Submit Answer for Marking";
+                btn.onclick = markAIAnswer;
+            } catch (error) {
+                alert("Error generating question. Is your API key correct?");
+                clearApiKey();
+            } finally {
+                btn.disabled = false;
+                loader.style.display = 'none';
+            }
+        }
+
+        async function markAIAnswer() {
+            const answer = document.getElementById('ai-user-answer').value.trim();
+            if (!answer) { alert("Please type an answer first!"); return; }
+
+            const btn = document.getElementById('ai-main-btn');
+            const loader = document.getElementById('ai-loader');
+            const feedbackBox = document.getElementById('ai-feedback-box');
+            const feedbackContent = document.getElementById('ai-feedback-content');
+
+            btn.disabled = true;
+            loader.style.display = 'block';
+            loader.innerText = "🤖 Reading your answer and checking mark scheme...";
+            document.getElementById('ai-user-answer').disabled = true;
+
+            const prompt = `You are an IB Computer Science Option A Examiner. 
+            The question you asked was: "${currentAIQuestionText}"
+            The core syllabus concept being tested is "${currentAIQuestionData.term}": "${currentAIQuestionData.def}".
+            
+            The student's answer is: "${answer}"
+            
+            Mark this out of an appropriate number of marks (e.g. [2 marks] or [3 marks]).
+            Format your response exactly like this:
+            Score: [X]/[Y] marks
+            Feedback: [Provide 2-3 sentences of direct feedback. Mention any IB keywords they missed, or praise them if they nailed it. Be encouraging but academically strict.]`;
+
+            try {
+                const feedbackText = await callGemini(prompt);
+                feedbackContent.innerHTML = feedbackText.replace(/\n/g, "<br>");
+                feedbackBox.style.display = 'block';
+                
+                btn.innerText = "Generate Another Question";
+                btn.onclick = generateAIQuestion;
+            } catch (error) {
+                alert("Error marking answer.");
+            } finally {
+                btn.disabled = false;
+                loader.style.display = 'none';
+            }
+        }
+
+        // --- Standard App Functions (Flashcards, Learn, Review, Blur) ---
+        // (Kept exactly identical to previous code to ensure it works properly)
+        
+        function addToReview(item) {
+            if (!reviewList.find(x => x.term === item.term)) {
+                reviewList.push({...item});
+                document.getElementById('review-count').innerText = reviewList.length;
+            }
+        }
+
+        function loadCard() {
+            if (flashcardQueue.length === 0) {
+                document.getElementById('card-term').innerText = "All done! Restarting...";
+                setTimeout(() => { flashcardQueue = [...rawData.map(item => ({...item, isHard: false}))]; currentCardIndex = 0; loadCard(); }, 1500); return;
+            }
+            const current = flashcardQueue[currentCardIndex];
+            document.getElementById('card-term').innerText = current.term;
+            document.getElementById('card-def').innerText = current.def;
+            document.getElementById('card-counter').innerText = `${flashcardQueue.length} cards remaining`;
+            const tag = document.getElementById('front-tag');
+            tag.className = current.hl ? 'tag hl' : 'tag sl';
+            tag.innerText = current.hl ? 'HL Extension' : 'SL Core';
+            const frontFace = document.getElementById('front-face');
+            if (current.isHard) frontFace.classList.add('hard-flag'); else frontFace.classList.remove('hard-flag');
+            document.getElementById('flashcard').classList.remove('is-flipped');
+            document.getElementById('confidence-controls').classList.remove('show');
+        }
+
+        function flipCard() {
+            const card = document.getElementById('flashcard');
+            if (!card.classList.contains('is-flipped')) { card.classList.add('is-flipped'); document.getElementById('confidence-controls').classList.add('show'); }
+        }
+
+        function markConfidence(level) {
+            const current = flashcardQueue[currentCardIndex];
+            if (level === 'hard') { addToReview(current); current.isHard = true; flashcardQueue.push(flashcardQueue.splice(currentCardIndex, 1)[0]); } 
+            else { flashcardQueue.splice(currentCardIndex, 1); }
+            if (currentCardIndex >= flashcardQueue.length) currentCardIndex = 0;
+            loadCard();
+        }
+
+        function isAnswerCorrect(input, currentData) {
+            const normalizedInput = input.replace(/[-\s]+/g, " ");
+            const normalizedTerm = currentData.term.toLowerCase().replace(/[-\s]+/g, " ");
+            let matchCount = 0;
+            currentData.keywords.forEach(kw => { if (normalizedInput.includes(kw)) matchCount++; });
+            if (normalizedInput === normalizedTerm || matchCount >= Math.ceil(currentData.keywords.length * 0.7)) return { status: "correct" };
+            else if (matchCount > 0) return { status: "close" };
+            else return { status: "wrong" };
+        }
+
+        function loadLearn() {
+            const current = learnData[learnIndex];
+            document.getElementById('learn-def').innerText = current.def;
+            document.getElementById('learn-input').value = '';
+            document.getElementById('learn-feedback').innerText = '';
+            document.getElementById('learn-hint').innerText = '';
+            const tag = document.getElementById('learn-tag');
+            tag.className = current.hl ? 'tag hl' : 'tag sl';
+            tag.innerText = current.hl ? 'HL Extension' : 'SL Core';
+        }
+
+        function checkLearnAnswer() {
+            const input = document.getElementById('learn-input').value.toLowerCase().trim();
+            if (input === "") return;
+            const currentData = learnData[learnIndex];
+            const result = isAnswerCorrect(input, currentData);
+            const fb = document.getElementById('learn-feedback'), hint = document.getElementById('learn-hint');
+            if (result.status === "correct") { fb.innerText = `✅ Correct! (${currentData.term})`; fb.className = "feedback-text correct"; hint.innerText = ""; } 
+            else { addToReview(currentData); if (result.status === "close") { fb.innerText = "⚠️ Close! Added to Review."; fb.className = "feedback-text incorrect"; hint.innerText = `Hint: Starts with '${currentData.term.charAt(0)}'`; } else { fb.innerText = "❌ Incorrect. Added to Review."; fb.className = "feedback-text incorrect"; hint.innerText = `Correct answer: ${currentData.term}`; } }
+        }
+
+        function nextLearn() {
+            learnIndex++; if (learnIndex >= learnData.length) { learnData.sort(() => Math.random() - 0.5); learnIndex = 0; alert("Deck finished! Reshuffling."); } loadLearn();
+        }
+
+        function initReviewTab() {
+            if (reviewList.length === 0) { document.getElementById('review-empty').style.display = 'block'; document.getElementById('review-active').style.display = 'none'; } 
+            else { document.getElementById('review-empty').style.display = 'none'; document.getElementById('review-active').style.display = 'block'; if (reviewIndex >= reviewList.length) reviewIndex = 0; loadReviewItem(); }
+        }
+
+        function loadReviewItem() {
+            const current = reviewList[reviewIndex];
+            document.getElementById('review-def').innerText = current.def;
+            document.getElementById('review-input').value = ''; document.getElementById('review-feedback').innerText = ''; document.getElementById('review-hint').innerText = '';
+            document.getElementById('review-input').focus();
+        }
+
+        function checkReviewAnswer() {
+            const input = document.getElementById('review-input').value.toLowerCase().trim();
+            if (input === "") return;
+            const currentData = reviewList[reviewIndex];
+            const result = isAnswerCorrect(input, currentData);
+            const fb = document.getElementById('review-feedback'), hint = document.getElementById('review-hint');
+            if (result.status === "correct") { fb.innerText = `✅ Nailed it! Removed from Weak Areas.`; fb.className = "feedback-text correct"; hint.innerText = ""; setTimeout(() => { reviewList.splice(reviewIndex, 1); document.getElementById('review-count').innerText = reviewList.length; if(reviewList.length === 0) initReviewTab(); else { if (reviewIndex >= reviewList.length) reviewIndex = 0; loadReviewItem(); } }, 1200); } 
+            else { fb.innerText = "❌ Still needs work."; fb.className = "feedback-text incorrect"; hint.innerText = `Correct answer: ${currentData.term}`; }
+        }
+
+        function nextReview() { reviewIndex++; if (reviewIndex >= reviewList.length) reviewIndex = 0; loadReviewItem(); }
+
+        function handleEnter(e, mode) { if (e.key === 'Enter') { if (mode === 'learn') checkLearnAnswer(); if (mode === 'review') checkReviewAnswer(); } }
+
+        function generateBlurSheet() {
+            const container = document.getElementById('blur-container');
+            rawData.forEach(item => {
+                const div = document.createElement('div'); div.className = 'blur-item';
+                div.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><strong>${item.term}</strong><span class="tag ${item.hl ? 'hl' : 'sl'}" style="margin:0;">${item.hl ? 'HL' : 'SL'}</span></div><span class="blurred-text">${item.def}</span>`;
+                div.onclick = function() { this.classList.toggle('revealed'); }; container.appendChild(div);
+            });
+        }
+
+        // Initialize App
+        loadCard();
+        loadLearn();
+        generateBlurSheet();
+        document.getElementById('review-count').innerText = reviewList.length;
+    </script>
+</body>
+</html>
